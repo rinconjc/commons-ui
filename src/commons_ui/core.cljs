@@ -102,7 +102,7 @@
 (defn bare-input
   [{:keys[model type options] :as attrs} & children]
   (let [attrs (-> attrs (bind model type)
-                  (dissoc :validator))
+                  (dissoc :validator :wrapper-class :label-class))
         children (to-options options children)]
     (case type
       "text" [:input.form-control attrs]
@@ -128,17 +128,17 @@
 (defn input
   "[input {:type text :model [doc id] }]
   [input {:type \"select\" :options seq :kv-fn}]"
-  [{:keys[type label wrapper-class-name label-class-name validator] :as attrs} & children]
+  [{:keys[type label wrapper-class label-class validator horizontal?] :as attrs} & children]
   (let [valid-class (atom nil)
         attrs (if validator
                 (assoc attrs :on-change
                        (wrap-validator validator
                                        #(reset! valid-class (str "has-" (name %))))) attrs)]
-    (fn [{:keys[type label wrapper-class-name label-class-name validator] :as attrs} & children]
+    (fn [{:keys[type label wrapper-class label-class validator] :as attrs} & children]
       [:div.form-group {:class @valid-class}
-       [:label.control-label {:class label-class-name} label]
-       (if wrapper-class-name
-         [:div {:class wrapper-class-name}
+       [:label.control-label {:class label-class} label]
+       (if wrapper-class
+         [:div {:class wrapper-class}
           [focus-aware (:focus attrs) [bare-input attrs children]]]
          [focus-aware (:focus attrs) [bare-input attrs children]])])))
 
