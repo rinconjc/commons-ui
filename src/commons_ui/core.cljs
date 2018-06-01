@@ -1,7 +1,8 @@
 (ns commons-ui.core
-  (:require [clojure.browser.repl :as repl]
-            [reagent.core :as r :refer [atom]]
-            [clojure.string :as str]))
+  (:require [reagent.core :as r :refer [atom]]
+            [clojure.string :as str]
+            [cljs.core.async :refer [<!]])
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (defn- bind [attrs model type]
   (if-let [[doc & path] model]
@@ -42,34 +43,37 @@
     (fn [attrs]
       [:span
        [:input.form-control
-        (assoc attrs
-               :on-focus    #(save! nil)
-               :on-blur     #(when-not @mouse-on-list?
-                               (reset! typeahead-hidden? true)
-                               (reset! selected-index -1))
-               :on-change   #(when-let [value (str/trim (value-of %))]
-                               (reset! selections (data-source (.toLowerCase value)))
-                               (save! (value-of %))
-                               (reset! typeahead-hidden? false)
-                               (reset! selected-index -1))
-               :on-key-down #(do
-                               (case (.-which %)
-                                 38 (do
-                                      (.preventDefault %)
-                                      (when-not (= @selected-index 0)
-                                        (swap! selected-index dec)
-                                        (choose-selected false)))
-                                 40 (do
-                                      (.preventDefault %)
-                                      (when-not (= @selected-index (dec (count @selections)))
-                                        (save! (value-of %))
-                                        (swap! selected-index inc)
-                                        (choose-selected false)))
-                                 9  (choose-selected true)
-                                 13 (choose-selected true)
-                                 27 (do (reset! typeahead-hidden? true)
-                                        (reset! selected-index 0))
-                                 "default")))]
+        (-> attrs (dissoc :choice-fn :result-fn :data-source :model)
+            (assoc
+             :on-focus    #(save! nil)
+             :on-blur     #(when-not @mouse-on-list?
+                             (reset! typeahead-hidden? true)
+                             (reset! selected-index -1))
+             :on-change   #(when-let [value (str/trim (value-of %))]
+                             (let [data (data-source (.toLowerCase value))]
+                               (if (coll? data) (reset! selections data)
+                                   (go (reset! selections (<! data)))))
+                             (save! (value-of %))
+                             (reset! typeahead-hidden? false)
+                             (reset! selected-index -1))
+             :on-key-down #(do
+                             (case (.-which %)
+                               38 (do
+                                    (.preventDefault %)
+                                    (when-not (= @selected-index 0)
+                                      (swap! selected-index dec)
+                                      (choose-selected false)))
+                               40 (do
+                                    (.preventDefault %)
+                                    (when-not (= @selected-index (dec (count @selections)))
+                                      (save! (value-of %))
+                                      (swap! selected-index inc)
+                                      (choose-selected false)))
+                               9  (choose-selected true)
+                               13 (choose-selected true)
+                               27 (do (reset! typeahead-hidden? true)
+                                      (reset! selected-index 0))
+                               "default"))))]
 
        [:ul {:style {:display (if (or (empty? @selections) @typeahead-hidden?) :none :block) }
              :class "typeahead-list"
@@ -102,10 +106,9 @@
 (defn bare-input
   [{:keys[model type options] :as attrs} & children]
   (let [attrs (-> attrs (bind model type)
-                  (dissoc :validator :wrapper-class :label-class))
+                  (dissoc :validator :wrapper-class :label-class :model))
         children (to-options options children)]
     (case type
-      "text" [:input.form-control attrs]
       "password" [:input.form-control attrs]
       "select" [:select.form-control  children]
       "textarea" [:textarea.form-control attrs]
@@ -116,7 +119,8 @@
                         ^{:key k} [:label.radio-inline
                                    [:input {:type "radio" :value k
                                             :on-change (:on-change attrs)}] v]))]
-      [:div {:class type} [:label [:input attrs] (:text attrs)]])))
+      "checkbox" [:div.checkbox [:label [:input attrs] (:text attrs)]]
+      [:input.form-control attrs])))
 
 (defn wrap-validator [v cont]
   (fn [e]
@@ -157,7 +161,7 @@
 (defn alert-box [{:keys [type fade-after] :or {type "danger"}} text show?]
   (when @show?
     (if fade-after (js/setTimeout #(reset! show? false) (* 1000 fade-after)))
-    [:div.col-md-3.text-center {:style {:z-index 101}}
+    [:div.text-center {:style {:z-index 101 :width "90%" :position "absolute" :padding "20px"}}
      [:div.alert.alert-dismissible {:class (str "alert-" type)}
       [:button.close {:on-click #(reset! show? nil) :aria-label "Close"}
        [:span {:aria-hidden true} "×"]] text]]))
