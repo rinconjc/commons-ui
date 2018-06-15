@@ -157,7 +157,7 @@
 (defn alert-box [{:keys [type fade-after] :or {type "danger"}} text show?]
   (when @show?
     (if fade-after (js/setTimeout #(reset! show? false) (* 1000 fade-after)))
-    [:div.col-md-3.text-center {:style {:z-index 101}}
+    [:div.text-center {:style {:z-index 101}}
      [:div.alert.alert-dismissible {:class (str "alert-" type)}
       [:button.close {:on-click #(reset! show? nil) :aria-label "Close"}
        [:span {:aria-hidden true} "×"]] text]]))
