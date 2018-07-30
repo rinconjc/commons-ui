@@ -158,17 +158,18 @@
                  :text-align "center"}}
    [:i.fa.fa-spinner.fa-spin.fa-3x {:style {:margin-top "10%"}}]])
 
-(defn alert-box [{:keys [type fade-after] :or {type "danger"}} text show?]
-  (when @show?
-    (if fade-after (js/setTimeout #(reset! show? false) (* 1000 fade-after)))
-    [:div.text-center {:style {:z-index 101 :width "90%" :position "absolute" :padding "20px"}}
-     [:div.alert.alert-dismissible {:class (str "alert-" type)}
-      [:button.close {:on-click #(reset! show? nil) :aria-label "Close"}
-       [:span {:aria-hidden true} "×"]] text]]))
+(defn alert-box [{:keys [type on-close] :or {type "danger"}}  text]
+  ;; (if fade-after (js/setTimeout fn-close (* 1000 fade-after)))
+  [:div.text-center {:style {:z-index 101 :width "90%" :position "absolute" :padding "20px"}}
+   [:div.alert.alert-dismissible {:class (str "alert-" type)}
+    [:button.close {:on-click on-close :aria-label "Close"}
+     [:span {:aria-hidden true} "×"]] text]])
 
-(defn alert [attrs text]
-  (let [show? (atom true)]
-    [alert-box attrs text show?]))
+(defn alert
+  ([attrs] (alert attrs (:text attrs)))
+  ([attrs text]
+   (if-not (empty? text)
+     [alert-box attrs text])))
 
 (defn tooltip [pos text]
   [:div.tooltip {:role "tooltip" :class (name pos)}
