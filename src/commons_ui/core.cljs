@@ -117,8 +117,9 @@
       "radio" [:div.radio
                (doall (for [[k v] (:items attrs)]
                         ^{:key k} [:label.radio-inline
-                                   [:input {:type "radio" :value k
-                                            :on-change (:on-change attrs)}] v]))]
+                                   [:input (assoc (dissoc attrs :items)
+                                                  :type "radio" :value k
+                                                  :on-change (:on-change attrs))] v]))]
       "checkbox" [:div.checkbox [:label [:input attrs] (:text attrs)]]
       [:input.form-control attrs])))
 
